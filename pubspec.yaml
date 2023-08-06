@@ -51,6 +51,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
+  universal_html: ^2.2.3
+  calendar_view: ^1.0.3
+  webview_flutter: ^4.2.2
 
 dev_dependencies:
   flutter_test:
@@ -75,8 +78,11 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+    - assets/camera.html
+    - assets/app.js
+
+    
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

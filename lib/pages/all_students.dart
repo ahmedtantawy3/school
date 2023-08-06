@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:school/pages/student_preview.dart';
@@ -9,45 +7,22 @@ import 'add_new_student.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
 
-class StudentsOfGroupPage extends StatefulWidget {
-  final MyGroup group;
-
-  StudentsOfGroupPage({required this.group});
-
+class AllStudents extends StatefulWidget {
   @override
   _StudentsOfGroupPageState createState() => _StudentsOfGroupPageState();
 }
 
-class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
+class _StudentsOfGroupPageState extends State<AllStudents> {
   // final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final firestoreInstance = FirebaseFirestore.instance;
-  bool sessionActivated = false;
   late bool visible;
-  String filteredText = '';
-  final TextEditingController _filter = TextEditingController();
-  Timer? _debounce;
   @override
   void dispose() {
     _nameController.dispose();
-    _filter.removeListener(_onSearchChanged);
-    _debounce?.cancel();
     super.dispose();
   }
 
-  _StudentsOfGroupPageState() {
-    _filter.addListener(_onSearchChanged);
-  }
-  _onSearchChanged() {
-    if (_debounce?.isActive ?? false) _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 1000), () {
-      // Call the function to filter the list here
-      print("Filtering with ${_filter.text}");
-      setState(() {
-        filteredText = _filter.text;
-      });
-    });
-  }
   // void _save() {HT 001417
 
   //   if (_formKey.currentState!.validate()) {
@@ -67,7 +42,7 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.group.name}'),
+        title: Text('جميع الطلاب'),
       ),
       body: VisibilityDetector(
         onVisibilityChanged: (VisibilityInfo info) {
@@ -75,8 +50,7 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
         },
         key: const Key('visible-detector-key'),
         child: BarcodeKeyboardListener(
-          useKeyDownEvent: true,
-          bufferDuration: const Duration(milliseconds: 2000),
+          bufferDuration: const Duration(milliseconds: 200),
           onBarcodeScanned: (barcode) {
             if (!visible) return;
             final enhancedBarcode = barcode
@@ -101,50 +75,30 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(left: 16),
-                  child: TextField(
-                    controller: _filter,
-                    decoration: const InputDecoration(
-                      labelText: 'بحث',
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 16),
-                  child: Text('طلبة ${widget.group.name} : '),
+                  child: Text('قائمة الطلاب'),
                 ),
                 const Divider(
                   thickness: 2,
                 ),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: firestoreInstance
-                        .collection('students')
-                        .where('groupRef', isEqualTo: widget.group.reference)
-                        .snapshots(),
+                    stream:
+                        firestoreInstance.collection('students').snapshots(),
                     builder: (BuildContext context,
-                        AsyncSnapshot<QuerySnapshot> snapshots) {
-                      if (snapshots.hasError) {
+                        AsyncSnapshot<QuerySnapshot> snapshot) {
+                      if (snapshot.hasError) {
                         return Text('Something went wrong');
                       }
 
-                      if (snapshots.connectionState ==
-                          ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return Text('Loading');
                       }
-                      var filteredResult = snapshots.data!.docs
-                          .where((element) =>
-                              (element['name'] as String)
-                                  .contains(filteredText) ||
-                              (element['phone'] as String)
-                                  .contains(filteredText) ||
-                              (element['parentPhone'] as String)
-                                  .contains(filteredText))
-                          .toList();
 
                       return ListView.separated(
-                        itemCount: filteredResult.length,
+                        itemCount: snapshot.data!.docs.length,
                         itemBuilder: (context, index) {
-                          DocumentSnapshot document = filteredResult[index];
+                          DocumentSnapshot document =
+                              snapshot.data!.docs[index];
                           MyStudent myStudent =
                               MyStudent.fromFirestore(document);
                           return ListTile(
@@ -170,41 +124,6 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
                     },
                   ),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                AddNewStudent(myGroup: widget.group),
-                          ),
-                        );
-                      },
-                      child: const Text('إضافة طالب'),
-                    ),
-                    SizedBox(
-                      width: 20,
-                    ),
-                    ElevatedButton(
-                      style: ButtonStyle(
-                          backgroundColor: MaterialStateColor.resolveWith(
-                              (states) => sessionActivated
-                                  ? Colors.red
-                                  : Colors.green)),
-                      onPressed: () {
-                        setState(() {
-                          sessionActivated = !sessionActivated;
-                        });
-                      },
-                      child: sessionActivated
-                          ? const Text('إنهاء الجلسة')
-                          : const Text('تفعيل الجلسة'),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -214,12 +133,9 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
   }
 
   Future<void> searchstudentWithBarcode(String barcode) async {
-    if (!sessionActivated) {
-      return;
-    }
     QuerySnapshot querySnapshot = await FirebaseFirestore.instance
         .collection('students')
-        .where('groupRef', isEqualTo: widget.group.reference)
+        .where('barcode'.toLowerCase(), isEqualTo: barcode.toLowerCase())
         .get();
 
     // If no document was found, return null.
@@ -229,24 +145,12 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
 
     // If a document was found, return it.
     // Note: This will only return the first document found, even if there are multiple documents with the same ID number.
-    final students = querySnapshot.docs.map((e) => MyStudent.fromFirestore(e));
-    final student = students.firstWhere(
-        (element) => element.barcode.toLowerCase() == barcode.toLowerCase());
 
+    final student = MyStudent.fromFirestore(querySnapshot.docs.first);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => StudentPreview(
-          myStudent: student,
-          myGroup: widget.group,
-        ),
+        builder: (context) => StudentPreview(myStudent: student),
       ),
     );
-  }
-
-  String fromAsciiString(String asciiString) {
-    return asciiString
-        .split(' ')
-        .map((code) => String.fromCharCode(int.parse(code)))
-        .join('');
   }
 }

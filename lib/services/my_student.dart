@@ -9,6 +9,9 @@ class MyStudent {
   String phone;
   String parentPhone;
   String notes;
+  String barcode;
+  String location;
+  List<dynamic> attendance;
 
   Blob profileImage;
   DocumentReference? groupRef;
@@ -21,6 +24,9 @@ class MyStudent {
     required this.phone,
     required this.parentPhone,
     required this.notes,
+    required this.barcode,
+    required this.location,
+    required this.attendance,
   });
 
   factory MyStudent.fromFirestore(DocumentSnapshot doc) {
@@ -28,23 +34,31 @@ class MyStudent {
     String id = doc.id;
     if (kIsWeb) {
       return MyStudent(
-          id: id,
-          name: data['name'] ?? '',
-          groupRef: data['groupRef'],
-          profileImage: data['profileImageUrl'] ?? '',
-          notes: data['notes'] ?? '',
-          parentPhone: data['parentPhone'] ?? '',
-          phone: data['phone'] ?? '');
+        id: id,
+        name: data['name'] ?? '',
+        groupRef: data['groupRef'],
+        profileImage: data['profileImageUrl'] ?? '',
+        notes: data['notes'] ?? '',
+        parentPhone: data['parentPhone'] ?? '',
+        phone: data['phone'] ?? '',
+        barcode: data['barcode'] ?? '',
+        location: data['address'] ?? '',
+        attendance: data['attendance'] ?? [],
+      );
     } else {
       return MyStudent(
-          id: id,
-          name: data['name'] ?? '',
-          groupRef: data['groupRef'],
-          profileImage:
-              Blob(Uint8List.fromList(data['profileImageUrl'].cast<int>())),
-          notes: data['notes'] ?? '',
-          parentPhone: data['parentPhone'] ?? '',
-          phone: data['phone'] ?? '');
+        id: id,
+        name: data['name'] ?? '',
+        groupRef: data['groupRef'],
+        profileImage:
+            Blob(Uint8List.fromList(data['profileImageUrl'].cast<int>())),
+        notes: data['notes'] ?? '',
+        parentPhone: data['parentPhone'] ?? '',
+        phone: data['phone'] ?? '',
+        barcode: data['barcode'] ?? '',
+        location: data['address'] ?? '',
+        attendance: data['attendance'] ?? [],
+      );
     }
   }
 
@@ -56,5 +70,7 @@ class MyStudent {
         'parentPhone': parentPhone,
         'notes': notes,
         'phone': phone,
+        'barcode': barcode,
+        'address': location,
       };
 }

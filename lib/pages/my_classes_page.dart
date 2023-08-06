@@ -20,7 +20,7 @@ class _MyClassesPageState extends State<MyClassesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text('Classes'),
+          title: const Text('الصفوف'),
           actions: <Widget>[
             IconButton(
               icon: const Icon(Icons.add),
@@ -103,7 +103,7 @@ class _NewClassPageState extends State<NewClassPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Class'),
+        title: const Text('صف جديد'),
       ),
       body: Form(
         key: _formKey,
@@ -113,15 +113,15 @@ class _NewClassPageState extends State<NewClassPage> {
               controller: _nameController,
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter a name';
+                  return 'ادخل اسم الصف';
                 }
                 return null;
               },
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: const InputDecoration(labelText: 'الاسم'),
             ),
             ElevatedButton(
               onPressed: _save,
-              child: const Text('Save'),
+              child: const Text('حفظ'),
             ),
           ],
         ),

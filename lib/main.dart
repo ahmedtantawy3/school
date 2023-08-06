@@ -5,8 +5,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:school/bloc/ClassList/class_list_bloc.dart';
 import 'package:school/firebase_options.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:school/pages/all_students.dart';
+import 'package:school/services/my_student.dart';
 import '/pages/my_classes_page.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:calendar_view/calendar_view.dart';
+import 'dart:convert';
+// import 'dart:html' as html;
+
 // void main() async {
 //   WidgetsFlutterBinding.ensureInitialized();
 //   await Firebase.initializeApp();
@@ -28,7 +34,7 @@ void main() async {
 
 enum HomePageType {
   firstPage,
-  secondPage,
+  CameraPage,
   thirdPage,
 }
 
@@ -43,26 +49,30 @@ class MyApp extends StatelessWidget {
           create: (context) => ClassListBloc()..add(LoadClasses()),
         ),
       ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: const [
-          Locale('en'), // English
-          Locale('ar'), // Arabic
-        ],
-        home: const HomePage(),
-        theme: ThemeData(
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 16), // Button padding
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8), // Button border radius
+      child: CalendarControllerProvider(
+        controller: EventController(),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [
+            Locale('en'), // English
+            Locale('ar'), // Arabic
+          ],
+          home: const HomePage(),
+          theme: ThemeData(
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 16), // Button padding
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(8), // Button border radius
+                ),
               ),
             ),
           ),
@@ -86,8 +96,8 @@ class _HomePageState extends State<HomePage> {
     switch (_currentPage) {
       case HomePageType.firstPage:
         return const FirstPage();
-      case HomePageType.secondPage:
-        return const SecondPage();
+      case HomePageType.CameraPage:
+        return const CameraPage();
       case HomePageType.thirdPage:
         return const ThirdPage();
       default:
@@ -125,7 +135,7 @@ class _HomePageState extends State<HomePage> {
                         backgroundColor:
                             Colors.purple, // Set button background color
                       ),
-                      child: const Text('Classes'),
+                      child: const Text('الصفوف'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -134,14 +144,14 @@ class _HomePageState extends State<HomePage> {
                     child: ElevatedButton(
                       onPressed: () {
                         setState(() {
-                          _currentPage = HomePageType.secondPage;
+                          _currentPage = HomePageType.CameraPage;
                         });
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
                             Colors.deepOrange, // Set button background color
                       ),
-                      child: const Text('Students'),
+                      child: const Text('الطلاب'),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -157,7 +167,7 @@ class _HomePageState extends State<HomePage> {
                         backgroundColor:
                             Colors.green, // Set button background color
                       ),
-                      child: const Text('Treasury'),
+                      child: const Text('الخزينة'),
                     ),
                   ),
                 ],
@@ -186,14 +196,12 @@ class FirstPage extends StatelessWidget {
   }
 }
 
-class SecondPage extends StatelessWidget {
-  const SecondPage({Key? key}) : super(key: key);
+class CameraPage extends StatelessWidget {
+  const CameraPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Second Page Content'),
-    );
+    return AllStudents();
   }
 }
 
@@ -207,3 +215,200 @@ class ThirdPage extends StatelessWidget {
     );
   }
 }
+
+class MyApp2 extends StatelessWidget {
+  const MyApp2({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Firestore Data')),
+        body: JsonData(),
+      ),
+    );
+  }
+}
+
+class JsonData extends StatefulWidget {
+  @override
+  _JsonDataState createState() => _JsonDataState();
+}
+
+class _JsonDataState extends State<JsonData> {
+  String? jsonStr;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+  }
+
+  Future<void> fetchData() async {
+    CollectionReference students =
+        FirebaseFirestore.instance.collection('students');
+
+    students.snapshots().listen((snapshot) {
+      final studentDocs = snapshot.docs
+          .map((doc) => MyStudent.fromFirestore(doc))
+          .toList()
+          .map((e) => e.toFirestore())
+          .toList();
+
+      List<Map<String, dynamic>> studentList = [];
+
+      for (var studentDoc in studentDocs) {
+        studentList.add(studentDoc);
+      }
+
+      setState(() {
+        jsonStr = jsonEncode(studentDocs);
+      });
+    });
+  }
+
+  void downloadFile() {
+    // final encodedStr = Uri.encodeComponent(jsonStr!);
+    // html.AnchorElement(href: "data:text/plain;charset=utf-8,$encodedStr")
+    //   ..setAttribute("download", "data.json")
+    //   ..click();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          ElevatedButton(
+            onPressed: jsonStr == null ? null : downloadFile,
+            child: const Text('Download JSON'),
+          ),
+          const SizedBox(height: 20),
+          // jsonStr == null
+          //     ? const CircularProgressIndicator()
+          //     : Text('Loaded: $jsonStr'),
+        ],
+      ),
+    );
+  }
+}
+
+// main.dart
+
+// import 'dart:js' as js;
+// import 'package:flutter/material.dart';
+// import 'camera_web_view.dart';
+// import 'dart:html' as html;
+
+// void main() {
+//   runApp(MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       home: FirstPage(),
+//     );
+//   }
+// }
+
+// class FirstPage extends StatefulWidget {
+//   @override
+//   _FirstPageState createState() => _FirstPageState();
+// }
+
+// class _FirstPageState extends State<FirstPage> {
+//   // Define a variable to store the image data
+//   String? _imageData;
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text("First Page"),
+//       ),
+//       body: Center(
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             // Display the image widget if the image data is not null
+//             _imageData != null
+//                 ? Image.network(_imageData!)
+//                 : Text("No image captured"),
+//             SizedBox(height: 20),
+//             ElevatedButton(
+//               child: Text("Go to Web View"),
+//               onPressed: () async {
+//                 // Navigate to the second page and wait for the result
+//                 var result = await Navigator.push(
+//                   context,
+//                   MaterialPageRoute(builder: (context) => CameraPage()),
+//                 );
+
+//                 // Set the image data to the result
+//                 setState(() {
+//                   _imageData = result;
+//                 });
+//               },
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+// class CameraPage extends StatefulWidget {
+//   @override
+//   _CameraPageState createState() => _CameraPageState();
+// }
+
+// class _CameraPageState extends State<CameraPage> {
+//   // Define a variable to store the image data
+//   String? _imageData;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     html.window.onMessage.listen((event) {
+//       // Check the type of the message
+//       if (event.data["type"] == "receiveImage") {
+//         // Set the image data to the received data
+
+//         _imageData = event.data["data"];
+
+//         if (mounted) {
+//           // Access the context property safely
+//           Navigator.pop(context, _imageData);
+//         }
+//       }
+//     });
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: Text("Web View"),
+//       ),
+//       body: Center(
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             // Display the web view widget
+//             Expanded(child: WebView()),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   @override
+//   void dispose() {
+//     // TODO: implement dispose
+//     super.dispose();
+//   }
+// }

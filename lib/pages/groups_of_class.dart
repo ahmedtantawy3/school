@@ -20,7 +20,7 @@ class _MyGroupsPageState extends State<MyGroupsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Groups of ${widget.myClass.name}'),
+        title: Text('مجموعات ${widget.myClass.name}'),
       ),
       body: Column(children: [
         Expanded(
@@ -61,7 +61,7 @@ class _MyGroupsPageState extends State<MyGroupsPage> {
                         NewGroupPage(myClass: widget.myClass)),
               );
             },
-            child: const Text('Add group'),
+            child: const Text('إضافة مجموعة'),
           ),
         ),
       ]),
@@ -106,7 +106,7 @@ class _NewGroupPageState extends State<NewGroupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('New Group'),
+        title: Text('مجموعة جديدة'),
       ),
       body: Form(
         key: _formKey,
@@ -116,15 +116,15 @@ class _NewGroupPageState extends State<NewGroupPage> {
               controller: _nameController,
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter a name';
+                  return 'ادخل الاسم';
                 }
                 return null;
               },
-              decoration: InputDecoration(labelText: 'Name'),
+              decoration: InputDecoration(labelText: 'الاسم'),
             ),
             ElevatedButton(
               onPressed: _save,
-              child: Text('Save'),
+              child: Text('حفظ'),
             ),
           ],
         ),

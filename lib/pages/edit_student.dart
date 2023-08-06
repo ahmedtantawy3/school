@@ -10,17 +10,17 @@ import 'package:camera/camera.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
 
-class AddNewStudent extends StatefulWidget {
-  final MyGroup myGroup;
+class EditStudent extends StatefulWidget {
+  final MyStudent myStudent;
 
-  const AddNewStudent({super.key, required this.myGroup});
+  const EditStudent({super.key, required this.myStudent});
 
   @override
   // ignore: library_private_types_in_public_api
   _AddNewStudentState createState() => _AddNewStudentState();
 }
 
-class _AddNewStudentState extends State<AddNewStudent> {
+class _AddNewStudentState extends State<EditStudent> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -40,8 +40,28 @@ class _AddNewStudentState extends State<AddNewStudent> {
   @override
   void initState() {
     super.initState();
-    selectedGroup = widget.myGroup;
+    if (widget.myStudent.groupRef != null) {
+      getFieldValue(widget.myStudent.groupRef!);
+    }
     fetchAllGroups();
+  }
+
+  void getFieldValue(DocumentReference docRef) async {
+    final snapShot = await docRef.get();
+    final group = MyGroup.fromFirestore(snapShot);
+    setState(() {
+      imageData = widget.myStudent.profileImage.bytes;
+      selectedGroup = group;
+
+      _nameController.text = widget.myStudent.name;
+      _phoneController.text = widget.myStudent.phone;
+
+      _parentPhoneController.text = widget.myStudent.parentPhone;
+
+      _noteController.text = widget.myStudent.notes;
+      _barcodeController.text = widget.myStudent.barcode;
+      _addressController.text = widget.myStudent.location;
+    });
   }
 
   Future<void> fetchAllGroups() async {
@@ -96,10 +116,10 @@ class _AddNewStudentState extends State<AddNewStudent> {
       }
 
       DocumentReference studentRef =
-          firestoreInstance.collection('students').doc();
+          firestoreInstance.collection('students').doc(widget.myStudent.id);
 
       MyStudent myStudent = MyStudent(
-        id: studentRef.id,
+        id: widget.myStudent.id,
         name: _nameController.text,
         groupRef: selectedGroup?.reference,
         profileImage: Blob(imageData!),
@@ -108,16 +128,16 @@ class _AddNewStudentState extends State<AddNewStudent> {
         phone: _phoneController.text,
         barcode: _barcodeController.text,
         location: _addressController.text,
-        attendance: [],
+        attendance: widget.myStudent.attendance,
       );
 
-      studentRef.set(myStudent.toFirestore());
+      studentRef.update(myStudent.toFirestore());
 
       selectedGroup!.reference!.set({
         'studentIds': FieldValue.arrayUnion([studentRef.id]),
       }, SetOptions(merge: true));
 
-      Navigator.pop(context);
+      Navigator.pop(context, myStudent);
     }
   }
 
@@ -131,16 +151,18 @@ class _AddNewStudentState extends State<AddNewStudent> {
     );
 
     // Set the image data to the result
-    setState(() {
-      imageData = result;
-    });
+    if (mounted) {
+      setState(() {
+        imageData = result;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('طالب جديد'),
+        title: const Text('تعديل الطالب'),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -232,7 +254,6 @@ class _AddNewStudentState extends State<AddNewStudent> {
                             .replaceAll('٨', '8')
                             .replaceAll('٩', '9')
                             .replaceAll('٠', '0');
-
                         if (!enhancedBarcode.toLowerCase().contains('ht')) {
                           return;
                         }
