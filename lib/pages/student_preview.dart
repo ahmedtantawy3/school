@@ -23,13 +23,18 @@ class _StudentPreviewState extends State<StudentPreview> {
   final _barcodeController = TextEditingController();
   final _addressController = TextEditingController();
   final firestoreInstance = FirebaseFirestore.instance;
+  String _formattedDate = '2023,08,06';
   String groupName = '';
   List<MyGroup> allGroups = [];
   bool showGroupDifference = false;
   @override
   void initState() {
     super.initState();
-
+    final DateTime now = DateTime.now();
+    final String formattedDate =
+        '${now.year},${now.month.toString().padLeft(2, '0')},${now.day.toString().padLeft(2, '0')}';
+    print(formattedDate);
+    _formattedDate = formattedDate;
     if (widget.myStudent.groupRef != null) {
       getFieldValue(widget.myStudent.groupRef!);
     }
@@ -45,7 +50,7 @@ class _StudentPreviewState extends State<StudentPreview> {
         DocumentReference studentRef =
             firestoreInstance.collection('students').doc(widget.myStudent.id);
 
-        const attendanceState = '2023,8,06,1';
+        var attendanceState = _formattedDate + ',1';
         studentRef.set({
           'attendance': FieldValue.arrayUnion([attendanceState]),
         }, SetOptions(merge: true));

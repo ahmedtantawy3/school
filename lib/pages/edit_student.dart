@@ -244,6 +244,7 @@ class _AddNewStudentState extends State<EditStudent> {
                         final enhancedBarcode = barcode
                             .replaceAll('اف', 'ht')
                             .replaceAll('آُ', 'HT')
+                            .replaceAll('ألإ', 'HT')
                             .replaceAll('١', '1')
                             .replaceAll('٢', '2')
                             .replaceAll('٣', '3')
