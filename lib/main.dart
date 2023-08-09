@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:school/bloc/ClassList/class_list_bloc.dart';
+import 'package:school/bloc/StudentsList/students_list_bloc.dart';
 import 'package:school/firebase_options.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:school/pages/all_students.dart';
@@ -48,6 +49,9 @@ class MyApp extends StatelessWidget {
         BlocProvider(
           create: (context) => ClassListBloc()..add(LoadClasses()),
         ),
+        BlocProvider(
+          create: (context) => StudentsListBloc()..add(LoadStudents()),
+        ),
       ],
       child: CalendarControllerProvider(
         controller: EventController(),
@@ -62,6 +66,7 @@ class MyApp extends StatelessWidget {
             Locale('en'), // English
             Locale('ar'), // Arabic
           ],
+          locale: const Locale('ar'),
           home: const HomePage(),
           theme: ThemeData(
             elevatedButtonTheme: ElevatedButtonThemeData(

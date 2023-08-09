@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:school/pages/students_of_group.dart';
 import 'package:school/services/my_group.dart';
 import 'package:school/services/my_student.dart';
-import 'package:universal_html/html.dart' as html;
+// import 'package:universal_html/html.dart' as html;
 
 import '../camera_page.dart';
 import 'package:camera/camera.dart';
@@ -181,6 +182,9 @@ class _AddNewStudentState extends State<AddNewStudent> {
                 ),
                 TextFormField(
                   controller: _phoneController,
+                  inputFormatters: [ArabicToEnglishNumberInputFormatter()],
+                  keyboardType:
+                      const TextInputType.numberWithOptions(signed: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'ادخل رقم الطالب';
@@ -191,6 +195,9 @@ class _AddNewStudentState extends State<AddNewStudent> {
                 ),
                 TextFormField(
                   controller: _parentPhoneController,
+                  inputFormatters: [ArabicToEnglishNumberInputFormatter()],
+                  keyboardType:
+                      const TextInputType.numberWithOptions(signed: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'ادخل رقم ولى الامر';
@@ -213,26 +220,13 @@ class _AddNewStudentState extends State<AddNewStudent> {
                   onVisibilityChanged: (VisibilityInfo info) {
                     visible = info.visibleFraction > 0;
                   },
-                  key: const Key('visible-detector-key'),
+                  key: Key('visible-detector-keys${DateTime.now()}'),
                   child: BarcodeKeyboardListener(
                     bufferDuration: const Duration(milliseconds: 200),
                     onBarcodeScanned: (barcode) {
                       if (!visible) return;
                       setState(() {
-                        final enhancedBarcode = barcode
-                            .replaceAll('اف', 'ht')
-                            .replaceAll('آُ', 'HT')
-                            .replaceAll('ألإ', 'HT')
-                            .replaceAll('١', '1')
-                            .replaceAll('٢', '2')
-                            .replaceAll('٣', '3')
-                            .replaceAll('٤', '4')
-                            .replaceAll('٥', '5')
-                            .replaceAll('٦', '6')
-                            .replaceAll('٧', '7')
-                            .replaceAll('٨', '8')
-                            .replaceAll('٩', '9')
-                            .replaceAll('٠', '0');
+                        final enhancedBarcode = barcodeEnhanced(barcode);
 
                         if (!enhancedBarcode.toLowerCase().contains('ht')) {
                           return;
@@ -294,5 +288,42 @@ class _AddNewStudentState extends State<AddNewStudent> {
     } else {
       return allGroups.firstWhere((element) => element.id == selectedGroup!.id);
     }
+  }
+}
+
+class ArabicToEnglishNumberInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    String translatedText = newValue.text.replaceAllMapped(
+      RegExp(r'[٠١٢٣٤٥٦٧٨٩]'),
+      (match) {
+        switch (match.group(0)) {
+          case '٠':
+            return '0';
+          case '١':
+            return '1';
+          case '٢':
+            return '2';
+          case '٣':
+            return '3';
+          case '٤':
+            return '4';
+          case '٥':
+            return '5';
+          case '٦':
+            return '6';
+          case '٧':
+            return '7';
+          case '٨':
+            return '8';
+          case '٩':
+            return '9';
+          default:
+            return match.group(0) ?? '';
+        }
+      },
+    );
+    return newValue.copyWith(text: translatedText);
   }
 }

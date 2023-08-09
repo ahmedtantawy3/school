@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:school/bloc/StudentsList/students_list_bloc.dart';
 import 'package:school/pages/student_preview.dart';
 import 'package:school/services/my_group.dart';
 import 'package:school/services/my_student.dart';
+import '../bloc/GroupList/bloc/group_list_bloc.dart';
 import 'add_new_student.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
@@ -27,16 +30,25 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
   String filteredText = '';
   final TextEditingController _filter = TextEditingController();
   Timer? _debounce;
+  final FocusNode _focusNode = FocusNode();
+
   @override
   void dispose() {
     _nameController.dispose();
     _filter.removeListener(_onSearchChanged);
     _debounce?.cancel();
+    _focusNode.dispose();
+
     super.dispose();
   }
 
   _StudentsOfGroupPageState() {
     _filter.addListener(_onSearchChanged);
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _filter.clear();
+      }
+    });
   }
   _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
@@ -79,83 +91,77 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
           bufferDuration: const Duration(milliseconds: 2000),
           onBarcodeScanned: (barcode) {
             if (!visible) return;
-            final enhancedBarcode = barcode
-                .replaceAll('اف', 'ht')
-                .replaceAll('آُ', 'HT')
-                .replaceAll('ألإ', 'HT')
-                .replaceAll('١', '1')
-                .replaceAll('٢', '2')
-                .replaceAll('٣', '3')
-                .replaceAll('٤', '4')
-                .replaceAll('٥', '5')
-                .replaceAll('٦', '6')
-                .replaceAll('٧', '7')
-                .replaceAll('٨', '8')
-                .replaceAll('٩', '9')
-                .replaceAll('٠', '0');
+            final enhancedBarcode = barcodeEnhanced(barcode);
             searchstudentWithBarcode(enhancedBarcode);
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
+                Container(
                   padding: const EdgeInsets.only(left: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   child: TextField(
                     controller: _filter,
-                    decoration: const InputDecoration(
-                      labelText: 'بحث',
-                    ),
+                    focusNode: _focusNode,
+                    decoration: InputDecoration(
+                        hintText: 'بحث',
+                        border: InputBorder.none,
+                        prefixIcon:
+                            const Icon(Icons.search, color: Colors.grey),
+                        suffixIcon: IconButton(
+                            onPressed: () {
+                              _filter.clear();
+                            },
+                            icon: const Icon(Icons.clear, color: Colors.grey))),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 16),
+                  padding: const EdgeInsets.all(8),
                   child: Text('طلبة ${widget.group.name} : '),
                 ),
                 const Divider(
                   thickness: 2,
+                  color: Colors.blueAccent,
                 ),
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: firestoreInstance
-                        .collection('students')
-                        .where('groupRef', isEqualTo: widget.group.reference)
-                        .snapshots(),
-                    builder: (BuildContext context,
-                        AsyncSnapshot<QuerySnapshot> snapshots) {
-                      if (snapshots.hasError) {
-                        return Text('Something went wrong');
+                  child: BlocBuilder<StudentsListBloc, StudentsListState>(
+                    builder: (context, state) {
+                      if (state is StudentsListInitial) {
+                        return const Text('جارى عرض الطلاب');
                       }
 
-                      if (snapshots.connectionState ==
-                          ConnectionState.waiting) {
-                        return Text('Loading');
-                      }
-                      var filteredResult = snapshots.data!.docs
+                      var students = state.students.where((element) =>
+                          element.groupRef == widget.group.reference);
+
+                      var filteredStudents = students
                           .where((element) =>
-                              (element['name'] as String)
-                                  .contains(filteredText) ||
-                              (element['phone'] as String)
-                                  .contains(filteredText) ||
-                              (element['parentPhone'] as String)
-                                  .contains(filteredText))
+                              element.name.contains(filteredText) ||
+                              element.phone.contains(filteredText) ||
+                              element.parentPhone.contains(filteredText))
                           .toList();
 
                       return ListView.separated(
-                        itemCount: filteredResult.length,
+                        itemCount: filteredStudents.length,
                         itemBuilder: (context, index) {
-                          DocumentSnapshot document = filteredResult[index];
-                          MyStudent myStudent =
-                              MyStudent.fromFirestore(document);
+                          MyStudent myStudent = filteredStudents[index];
                           return ListTile(
                             title: Text(myStudent.name),
                             onTap: () {
+                              final bloc =
+                                  BlocProvider.of<GroupListBloc>(context);
+
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      StudentPreview(myStudent: myStudent),
+                                  builder: (context) => BlocProvider.value(
+                                    value: bloc,
+                                    child: StudentPreview(myStudent: myStudent),
+                                  ),
                                 ),
                               );
                             },
@@ -186,7 +192,7 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
                       },
                       child: const Text('إضافة طالب'),
                     ),
-                    SizedBox(
+                    const SizedBox(
                       width: 20,
                     ),
                     ElevatedButton(
@@ -218,30 +224,38 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
     if (!sessionActivated) {
       return;
     }
-    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-        .collection('students')
-        .where('groupRef', isEqualTo: widget.group.reference)
-        .get();
 
-    // If no document was found, return null.
-    if (querySnapshot.docs.isEmpty) {
-      return;
-    }
+    final bloc = BlocProvider.of<StudentsListBloc>(context, listen: false);
+    final students = bloc.state.students;
 
-    // If a document was found, return it.
-    // Note: This will only return the first document found, even if there are multiple documents with the same ID number.
-    final students = querySnapshot.docs.map((e) => MyStudent.fromFirestore(e));
     final student = students.firstWhere(
         (element) => element.barcode.toLowerCase() == barcode.toLowerCase());
 
-    Navigator.of(context).push(
+    presentStudentPreview(student);
+  }
+
+  void presentStudentPreview(MyStudent student) async {
+    final bloc = BlocProvider.of<GroupListBloc>(context);
+
+    Navigator.push(
+      context,
       MaterialPageRoute(
-        builder: (context) => StudentPreview(
-          myStudent: student,
-          myGroup: widget.group,
+        builder: (newContext) => BlocProvider.value(
+          value: bloc,
+          child: StudentPreview(
+            myStudent: student,
+            myGroup: widget.group,
+          ),
         ),
       ),
     );
+
+    // if (code != null) {
+    //   // Delay the push to ensure the previous route completes its pop animation
+    //   Future.delayed(Duration(milliseconds: 500), () {
+    //     searchstudentWithBarcode(code);
+    //   });
+    // }
   }
 
   String fromAsciiString(String asciiString) {
@@ -250,4 +264,19 @@ class _StudentsOfGroupPageState extends State<StudentsOfGroupPage> {
         .map((code) => String.fromCharCode(int.parse(code)))
         .join('');
   }
+}
+
+String barcodeEnhanced(String _barcode) {
+  return _barcode
+      .replaceRange(0, 2, 'HT')
+      .replaceAll('١', '1')
+      .replaceAll('٢', '2')
+      .replaceAll('٣', '3')
+      .replaceAll('٤', '4')
+      .replaceAll('٥', '5')
+      .replaceAll('٦', '6')
+      .replaceAll('٧', '7')
+      .replaceAll('٨', '8')
+      .replaceAll('٩', '9')
+      .replaceAll('٠', '0');
 }

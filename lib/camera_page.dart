@@ -135,11 +135,10 @@
 //   }
 // }
 
-import 'dart:convert';
-import 'dart:js' as js;
 import 'package:flutter/material.dart';
 import 'camera_web_view.dart';
 import 'dart:html' as html;
+import 'dart:convert';
 
 class CameraPage extends StatefulWidget {
   @override
@@ -153,7 +152,7 @@ class _CameraPageState extends State<CameraPage> {
   @override
   void initState() {
     super.initState();
-
+// TODO : -
     html.window.onMessage.listen((event) {
       // Check the type of the message
       if (event.data["type"] == "receiveImage") {

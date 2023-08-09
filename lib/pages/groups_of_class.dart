@@ -38,11 +38,15 @@ class _MyGroupsPageState extends State<MyGroupsPage> {
                   return ListTile(
                     title: Text(myGroup.name),
                     onTap: () {
+                      final bloc = BlocProvider.of<GroupListBloc>(context);
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              StudentsOfGroupPage(group: myGroup),
+                          builder: (newContext) => BlocProvider.value(
+                            value: bloc,
+                            child: StudentsOfGroupPage(group: myGroup),
+                          ),
                         ),
                       );
                     },

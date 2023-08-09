@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:school/bloc/StudentsList/students_list_bloc.dart';
 import 'package:school/pages/student_preview.dart';
+import 'package:school/pages/students_of_group.dart';
 import 'package:school/services/my_group.dart';
 import 'package:school/services/my_student.dart';
 import 'add_new_student.dart';
@@ -17,6 +20,14 @@ class _StudentsOfGroupPageState extends State<AllStudents> {
   final _nameController = TextEditingController();
   final firestoreInstance = FirebaseFirestore.instance;
   late bool visible;
+  List<MyGroup> allGroups = [];
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    // fetchAllGroups();
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -42,7 +53,7 @@ class _StudentsOfGroupPageState extends State<AllStudents> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('جميع الطلاب'),
+        title: const Text('جميع الطلاب'),
       ),
       body: VisibilityDetector(
         onVisibilityChanged: (VisibilityInfo info) {
@@ -53,20 +64,7 @@ class _StudentsOfGroupPageState extends State<AllStudents> {
           bufferDuration: const Duration(milliseconds: 200),
           onBarcodeScanned: (barcode) {
             if (!visible) return;
-            final enhancedBarcode = barcode
-                .replaceAll('اف', 'ht')
-                .replaceAll('آُ', 'HT')
-                .replaceAll('ألإ', 'HT')
-                .replaceAll('١', '1')
-                .replaceAll('٢', '2')
-                .replaceAll('٣', '3')
-                .replaceAll('٤', '4')
-                .replaceAll('٥', '5')
-                .replaceAll('٦', '6')
-                .replaceAll('٧', '7')
-                .replaceAll('٨', '8')
-                .replaceAll('٩', '9')
-                .replaceAll('٠', '0');
+            final enhancedBarcode = barcodeEnhanced(barcode);
             searchstudentWithBarcode(enhancedBarcode);
           },
           child: Padding(
@@ -74,34 +72,26 @@ class _StudentsOfGroupPageState extends State<AllStudents> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 16),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16),
                   child: Text('قائمة الطلاب'),
                 ),
                 const Divider(
                   thickness: 2,
                 ),
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream:
-                        firestoreInstance.collection('students').snapshots(),
-                    builder: (BuildContext context,
-                        AsyncSnapshot<QuerySnapshot> snapshot) {
-                      if (snapshot.hasError) {
-                        return Text('Something went wrong');
+                  child: BlocBuilder<StudentsListBloc, StudentsListState>(
+                    builder: (context, state) {
+                      if (state is StudentsListInitial) {
+                        return const Text('جارى عرض الطلاب');
                       }
 
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Text('Loading');
-                      }
+                      var students = state.students;
 
                       return ListView.separated(
-                        itemCount: snapshot.data!.docs.length,
+                        itemCount: students.length,
                         itemBuilder: (context, index) {
-                          DocumentSnapshot document =
-                              snapshot.data!.docs[index];
-                          MyStudent myStudent =
-                              MyStudent.fromFirestore(document);
+                          MyStudent myStudent = students[index];
                           return ListTile(
                             title: Text(myStudent.name),
                             onTap: () {
@@ -134,24 +124,65 @@ class _StudentsOfGroupPageState extends State<AllStudents> {
   }
 
   Future<void> searchstudentWithBarcode(String barcode) async {
-    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-        .collection('students')
-        .where('barcode'.toLowerCase(), isEqualTo: barcode.toLowerCase())
-        .get();
-
-    // If no document was found, return null.
-    if (querySnapshot.docs.isEmpty) {
-      return;
-    }
-
     // If a document was found, return it.
     // Note: This will only return the first document found, even if there are multiple documents with the same ID number.
+    final bloc = BlocProvider.of<StudentsListBloc>(context, listen: false);
+    final students = bloc.state.students;
 
-    final student = MyStudent.fromFirestore(querySnapshot.docs.first);
+    final student = students.firstWhere(
+        (element) => element.barcode.toLowerCase() == barcode.toLowerCase());
+
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => StudentPreview(myStudent: student),
+        builder: (context) =>
+            StudentPreview(myStudent: student, allGroups: allGroups),
       ),
     );
   }
+
+  Future<void> fetchAllGroups() async {
+    List<MyGroup> allGroups = [];
+
+    // Get all documents from the 'classes' collection
+    QuerySnapshot classSnapshot =
+        await firestoreInstance.collection('classes').get();
+
+    // Iterate over each class document
+    for (QueryDocumentSnapshot classDoc in classSnapshot.docs) {
+      // Get the class ID
+      String classId = classDoc.id;
+
+      // Get all documents from the 'groups' subcollection of the class
+      QuerySnapshot groupSnapshot = await firestoreInstance
+          .collection('classes')
+          .doc(classId)
+          .collection('groups')
+          .get();
+
+      // Iterate over each group document and create MyGroup objects
+      for (QueryDocumentSnapshot groupDoc in groupSnapshot.docs) {
+        MyGroup myGroup = MyGroup.fromFirestore(groupDoc);
+        allGroups.add(myGroup);
+      }
+    }
+
+    setState(() {
+      this.allGroups = allGroups;
+    });
+  }
+}
+
+String barcodeEnhanced(String _barcode) {
+  return _barcode
+      .replaceRange(0, 2, 'HT')
+      .replaceAll('١', '1')
+      .replaceAll('٢', '2')
+      .replaceAll('٣', '3')
+      .replaceAll('٤', '4')
+      .replaceAll('٥', '5')
+      .replaceAll('٦', '6')
+      .replaceAll('٧', '7')
+      .replaceAll('٨', '8')
+      .replaceAll('٩', '9')
+      .replaceAll('٠', '0');
 }
