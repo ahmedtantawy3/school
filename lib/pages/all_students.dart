@@ -12,10 +12,10 @@ import 'package:flutter_barcode_listener/flutter_barcode_listener.dart';
 
 class AllStudents extends StatefulWidget {
   @override
-  _StudentsOfGroupPageState createState() => _StudentsOfGroupPageState();
+  _AllStudentsPageState createState() => _AllStudentsPageState();
 }
 
-class _StudentsOfGroupPageState extends State<AllStudents> {
+class _AllStudentsPageState extends State<AllStudents> {
   // final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final firestoreInstance = FirebaseFirestore.instance;

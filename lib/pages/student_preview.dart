@@ -66,13 +66,13 @@ class _StudentPreviewState extends State<StudentPreview> {
       groups = [MyGroup.fromFirestore(snapShot)];
     }
 
-    final group = groups.firstWhere((element) {
+    final MyGroup? group = groups.where((element) {
       // ignore: avoid_print
       print(element.id + docRef.id);
       return element.id == docRef.id;
-    });
+    }).firstOrNull;
     if (widget.myGroup != null) {
-      if (widget.myGroup!.id != group.id) {
+      if (widget.myGroup!.id != group?.id) {
         showGroupDifference = true;
 
         AudioElement()
@@ -88,7 +88,7 @@ class _StudentPreviewState extends State<StudentPreview> {
 
     makeAttendance();
     setState(() {
-      groupName = group.name;
+      groupName = group!.name;
       _nameController.text = widget.myStudent.name;
       _phoneController.text = widget.myStudent.phone;
 
